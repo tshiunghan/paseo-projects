@@ -8,18 +8,18 @@ import { boardActionRpc, boardEditRpc, boardSectionRpc, inboxDoneRpc, inboxListR
 
 // The thread groups of `pp`, most urgent first.
 const GROUPS = [
-  { key: "waiting-on-you", label: "等你处理", color: "#dc2626" },
-  { key: "ready-for-review", label: "待评审", color: "#8b5cf6" },
-  { key: "landing", label: "待合并", color: "#16a34a" },
-  { key: "working", label: "进行中", color: "#3b82f6" },
-  { key: "idle", label: "空闲", color: "#94a3b8" },
-  { key: "resolved", label: "已解决", color: "#64748b" },
+  { key: "waiting-on-you", label: "Waiting on you", color: "#dc2626" },
+  { key: "ready-for-review", label: "Ready for review", color: "#8b5cf6" },
+  { key: "landing", label: "Ready to merge", color: "#16a34a" },
+  { key: "working", label: "Working", color: "#3b82f6" },
+  { key: "idle", label: "Idle", color: "#94a3b8" },
+  { key: "resolved", label: "Resolved", color: "#64748b" },
 ];
 
 // The tabs, in HP's popup order.
 const TABS = [
-  { key: "threads", label: "线程" }, { key: "tasks", label: "任务" }, { key: "inbox", label: "Inbox" },
-  { key: "routines", label: "Routines" }, { key: "settings", label: "设置" }, { key: "memory", label: "记忆" },
+  { key: "threads", label: "Threads" }, { key: "tasks", label: "Tasks" }, { key: "inbox", label: "Inbox" },
+  { key: "routines", label: "Routines" }, { key: "settings", label: "Settings" }, { key: "memory", label: "Memory" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 type Section = "tasks" | "routines" | "settings" | "memory";
@@ -87,7 +87,7 @@ export function BoardScreen({ theme, layout }: PluginScreenProps) {
     [theme, layout.compact],
   );
 
-  if (q.isLoading) return <View style={styles.screen}><Text style={styles.empty}>加载中…</Text></View>;
+  if (q.isLoading) return <View style={styles.screen}><Text style={styles.empty}>Loading…</Text></View>;
 
   const run = (a: "ack" | "restart" | "resolve", t: Thread) => action.mutate({ project: t.project, id: t.id, action: a });
 
@@ -95,7 +95,7 @@ export function BoardScreen({ theme, layout }: PluginScreenProps) {
     <ScrollView style={styles.screen} contentContainerStyle={styles.scroll}>
       <View style={[styles.row, { flexWrap: "wrap" as const }]}>
         {TABS.map((t) => {
-          const count = t.key === "threads" ? `（${threads.filter((x) => x.group !== "resolved").length}）` : t.key === "inbox" ? `（${inboxQ.data?.items.length ?? 0}）` : "";
+          const count = t.key === "threads" ? ` (${threads.filter((x) => x.group !== "resolved").length})` : t.key === "inbox" ? ` (${inboxQ.data?.items.length ?? 0})` : "";
           return <Pressable key={t.key} accessibilityRole="tab" onPress={() => { setTab(t.key); setOpen(null); }}><Text style={[styles.tab, tab === t.key && styles.tabOn]}>{t.label}{count}</Text></Pressable>;
         })}
       </View>
@@ -106,26 +106,26 @@ export function BoardScreen({ theme, layout }: PluginScreenProps) {
         <SectionView section={tab} theme={theme} styles={styles} />
       ) : tab === "inbox" ? (
         <View>
-          {(inboxQ.data?.items ?? []).length === 0 && <Text style={styles.empty}>Inbox 是空的。</Text>}
+          {(inboxQ.data?.items ?? []).length === 0 && <Text style={styles.empty}>Inbox is empty.</Text>}
           {(inboxQ.data?.items ?? []).map((i: Item) => (
             <View key={i.id} style={styles.card}>
               <Text style={styles.title}>{i.summary}</Text>
               <Text style={styles.meta}>{i.project} · [{i.kind}] {i.subject}</Text>
               <View style={{ flexDirection: "row", marginTop: 8 }}>
-                <Btn label="已处理" disabled={markDone.isPending} theme={theme} onPress={() => markDone.mutate({ project: i.project, ids: [i.id] })} />
+                <Btn label="Mark done" disabled={markDone.isPending} theme={theme} onPress={() => markDone.mutate({ project: i.project, ids: [i.id] })} />
               </View>
             </View>
           ))}
         </View>
       ) : !selected ? (
         <View>
-          {threads.length === 0 && <Text style={styles.empty}>没有线程。{"\n"}pp open &lt;slug&gt; 启动项目的 coordinator，由它开线程。</Text>}
+          {threads.length === 0 && <Text style={styles.empty}>No threads yet.{"\n"}pp open &lt;slug&gt; starts the project's coordinator, which opens threads.</Text>}
           {GROUPS.map((g) => {
             const items = threads.filter((t) => t.group === g.key);
             if (items.length === 0) return null;
             return (
               <View key={g.key}>
-                <Text style={styles.groupTitle}>{g.label}（{items.length}）</Text>
+                <Text style={styles.groupTitle}>{g.label} ({items.length})</Text>
                 {items.map((t: Thread) => (
                   <Pressable key={key(t)} onPress={() => setOpen(key(t))} style={[styles.card, { borderLeftColor: g.color }]}>
                     <Text style={styles.title}>{t.title}</Text>
@@ -143,20 +143,20 @@ export function BoardScreen({ theme, layout }: PluginScreenProps) {
       ) : (
         <View>
           <View style={styles.row}>
-            <Pressable accessibilityRole="button" onPress={() => setOpen(null)}><Text style={[styles.tab, styles.tabOn]}>‹ 返回</Text></Pressable>
-            <Text style={[styles.tab, { opacity: 0.7 }]}>{needsYou > 0 ? `${needsYou} 个线程等你处理` : ""}</Text>
+            <Pressable accessibilityRole="button" onPress={() => setOpen(null)}><Text style={[styles.tab, styles.tabOn]}>‹ Back</Text></Pressable>
+            <Text style={[styles.tab, { opacity: 0.7 }]}>{needsYou > 0 ? (needsYou === 1 ? "1 thread needs you" : `${needsYou} threads need you`) : ""}</Text>
           </View>
           <Text style={styles.title}>{selected.title}</Text>
           <Text style={styles.meta}>{selected.project} · {selected.id} · {selected.profile}{selected.branch ? ` · ${selected.branch}` : ""}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap" as const, marginTop: 10 }}>
-            <Btn label="Ack 报告" theme={theme} disabled={action.isPending} onPress={() => run("ack", selected)} />
-            <Btn label="重启" theme={theme} disabled={action.isPending} onPress={() => run("restart", selected)} />
+            <Btn label="Ack report" theme={theme} disabled={action.isPending} onPress={() => run("ack", selected)} />
+            <Btn label="Restart" theme={theme} disabled={action.isPending} onPress={() => run("restart", selected)} />
             <Btn label="Resolve" theme={theme} primary disabled={action.isPending} onPress={() => run("resolve", selected)} />
-            {selected.pr ? <Btn label="打开 PR" theme={theme} onPress={() => openExternal(selected.pr!)} /> : null}
+            {selected.pr ? <Btn label="Open PR" theme={theme} onPress={() => openExternal(selected.pr!)} /> : null}
           </View>
           {(detail.data?.next ?? []).length > 0 && (
             <View style={{ marginTop: 8 }}>
-              <Text style={styles.groupTitle}>Next（点击转发给线程）</Text>
+              <Text style={styles.groupTitle}>Next (tap to forward to the thread)</Text>
               {(detail.data?.next ?? []).map((line, n) => (
                 <Pressable key={n} style={styles.card} disabled={action.isPending} onPress={() => action.mutate({ project: selected.project, id: selected.id, action: "next", line: n + 1 })}>
                   <Text style={{ color: theme.colors.foreground, fontSize: 13 }}>{n + 1}. {line}</Text>
@@ -164,7 +164,7 @@ export function BoardScreen({ theme, layout }: PluginScreenProps) {
               ))}
             </View>
           )}
-          <Text style={[styles.groupTitle, { marginTop: 12 }]}>报告</Text>
+          <Text style={[styles.groupTitle, { marginTop: 12 }]}>Report</Text>
           <Text style={styles.mono}>{detail.data?.report?.slice(0, 8000) ?? "…"}</Text>
         </View>
       )}
@@ -194,20 +194,20 @@ function SectionView({ section, theme, styles }: { section: Section; theme: Plug
   });
   const data = q.data?.data;
   if (q.isError) return <Text style={styles.note}>{String((q.error as Error).message).slice(0, 200)}</Text>;
-  if (!data) return <Text style={styles.empty}>加载中…</Text>;
+  if (!data) return <Text style={styles.empty}>Loading…</Text>;
   const text = { color: theme.colors.foreground, fontSize: 13 } as const;
   const toggle = (k: string) => setShown(shown === k ? null : k);
   const status = (
     <>
       {run.isError && <Text style={styles.note}>{String((run.error as Error).message).slice(0, 200)}</Text>}
-      {run.isSuccess && <Text style={styles.note}>{run.data.message.slice(0, 120) || "已发送"}</Text>}
+      {run.isSuccess && <Text style={styles.note}>{run.data.message.slice(0, 120) || "sent"}</Text>}
       {edit.isError && <Text style={styles.note}>{String((edit.error as Error).message).slice(0, 200)}</Text>}
-      {edit.isSuccess && <Text style={styles.note}>{edit.data.message.slice(0, 160) || "已修改"}</Text>}
+      {edit.isSuccess && <Text style={styles.note}>{edit.data.message.slice(0, 160) || "saved"}</Text>}
     </>
   );
 
   if (section === "tasks") {
-    if (!data.length) return <Text style={styles.empty}>没有任务。让 coordinator 加一条。</Text>;
+    if (!data.length) return <Text style={styles.empty}>No tasks. Ask the coordinator to add one.</Text>;
     let last = "";
     return (
       <View>
@@ -221,13 +221,13 @@ function SectionView({ section, theme, styles }: { section: Section; theme: Plug
               {header}
               <Pressable style={styles.card} onPress={() => toggle(k)}>
                 <Text style={styles.title}>{t.title}{t.notes ? "  ≡" : ""}</Text>
-                <Text style={styles.meta}>{[t.owner, t.thread].filter(Boolean).join(" · ") || "未指派"}</Text>
+                <Text style={styles.meta}>{[t.owner, t.thread].filter(Boolean).join(" · ") || "unassigned"}</Text>
                 {shown === k && t.notes ? <Text style={[styles.mono, { marginTop: 8 }]}>{t.notes}</Text> : null}
                 {shown === k && (
                   <View style={{ flexDirection: "row", flexWrap: "wrap" as const, marginTop: 8 }}>
-                    {!t.thread && <Btn label="派工" primary theme={theme} disabled={run.isPending} onPress={() => run.mutate({ project: t.project, kind: "task", action: "delegate", target: t.title })} />}
-                    <Btn label="完成" theme={theme} disabled={run.isPending} onPress={() => run.mutate({ project: t.project, kind: "task", action: "done", target: t.title })} />
-                    <Btn label="放弃" theme={theme} disabled={run.isPending} onPress={() => run.mutate({ project: t.project, kind: "task", action: "drop", target: t.title })} />
+                    {!t.thread && <Btn label="Delegate" primary theme={theme} disabled={run.isPending} onPress={() => run.mutate({ project: t.project, kind: "task", action: "delegate", target: t.title })} />}
+                    <Btn label="Done" theme={theme} disabled={run.isPending} onPress={() => run.mutate({ project: t.project, kind: "task", action: "done", target: t.title })} />
+                    <Btn label="Drop" theme={theme} disabled={run.isPending} onPress={() => run.mutate({ project: t.project, kind: "task", action: "drop", target: t.title })} />
                   </View>
                 )}
               </Pressable>
@@ -239,7 +239,7 @@ function SectionView({ section, theme, styles }: { section: Section; theme: Plug
   }
 
   if (section === "routines") {
-    if (!data.length) return <Text style={styles.empty}>没有 routine。让 coordinator 加一个。</Text>;
+    if (!data.length) return <Text style={styles.empty}>No routines. Ask the coordinator to add one.</Text>;
     return (
       <View>
         {status}
@@ -249,13 +249,13 @@ function SectionView({ section, theme, styles }: { section: Section; theme: Plug
             <Pressable key={k} style={[styles.card, { opacity: r.enabled || r.error ? 1 : 0.6 }]} onPress={() => toggle(k)}>
               <Text style={styles.title}>{r.project} · {r.name}</Text>
               {r.error
-                ? <Text style={[styles.meta, { color: "#dc2626", opacity: 1 }]}>配置错误：{r.error}</Text>
-                : <Text style={styles.meta}>{r.when} · {r.enabled ? "开启" : "关闭"}{r.command ? " · 命令型" : ""}{r.last ? ` · ${r.last}` : ""}</Text>}
+                ? <Text style={[styles.meta, { color: "#dc2626", opacity: 1 }]}>Config error: {r.error}</Text>
+                : <Text style={styles.meta}>{r.when} · {r.enabled ? "on" : "off"}{r.command ? " · command" : ""}{r.last ? ` · ${r.last}` : ""}</Text>}
               {shown === k && !r.error && (
                 <View style={{ marginTop: 8 }}>
                   <Text style={styles.mono}>{r.command ? `$ ${r.command}\n\n` : ""}{r.prompt}</Text>
                   <View style={{ flexDirection: "row", marginTop: 8 }}>
-                    <Btn label={r.enabled ? "关闭" : "开启"} theme={theme} disabled={run.isPending} onPress={() => run.mutate({ project: r.project, kind: "routine", action: "toggle", target: r.name })} />
+                    <Btn label={r.enabled ? "Turn off" : "Turn on"} theme={theme} disabled={run.isPending} onPress={() => run.mutate({ project: r.project, kind: "routine", action: "toggle", target: r.name })} />
                   </View>
                 </View>
               )}
@@ -273,8 +273,8 @@ function SectionView({ section, theme, styles }: { section: Section; theme: Plug
     const modelOf = (prov: string) => prov.split("/").slice(1).join("/");
     const providerOf = (kind: string) => ch.providers.find((p: any) => p.kind === kind) ?? { kind, models: [], modes: [] };
     const profileNames: Opt[] = data.profiles.map((p: any) => ({ value: p.name, label: p.name }));
-    const onOff: Opt[] = [{ value: "true", label: "开" }, { value: "false", label: "关" }];
-    const inherit: Opt = { value: "default", label: "跟随上级" };
+    const onOff: Opt[] = [{ value: "true", label: "on" }, { value: "false", label: "off" }];
+    const inherit: Opt = { value: "default", label: "inherit" };
     const withCurrent = (opts: Opt[], cur: string) => (cur && !opts.some((o) => o.value === cur) ? [{ value: cur, label: cur }, ...opts] : opts);
     const input = { color: theme.colors.foreground, borderColor: theme.colors.surface1, borderWidth: 1, borderRadius: 6, padding: 6, fontSize: 13, marginVertical: 6 } as const;
     const chip = (o: Opt, on: boolean, onPress: () => void) => (
@@ -289,7 +289,7 @@ function SectionView({ section, theme, styles }: { section: Section; theme: Plug
     // A row that opens on tap; `body` is what it shows open.
     const row = (k: string, label: string, shown: string, body: () => any, open?: () => void) => (
       <View key={k}>
-        <Pressable accessibilityRole="button" accessibilityLabel={`修改 ${label}`} onPress={() => { if (editing === k) setEditing(null); else { setEditing(k); open?.(); } }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Edit ${label}`} onPress={() => { if (editing === k) setEditing(null); else { setEditing(k); open?.(); } }}>
           <Text style={styles.mono}>{label.padEnd(22)} {shown || "—"}  {editing === k ? "▾" : "▸"}</Text>
         </Pressable>
         {editing === k && <View style={{ marginBottom: 6 }}>{body()}</View>}
@@ -304,8 +304,8 @@ function SectionView({ section, theme, styles }: { section: Section; theme: Plug
         <>
           <TextInput style={input} value={draft} onChangeText={setDraft} autoFocus multiline={e.key === "goal"} accessibilityLabel={label} />
           <View style={{ flexDirection: "row" }}>
-            <Btn label="保存" primary theme={theme} disabled={edit.isPending} onPress={() => edit.mutate({ ...e, value: draft.trim() })} />
-            <Btn label="取消" theme={theme} onPress={() => setEditing(null)} />
+            <Btn label="Save" primary theme={theme} disabled={edit.isPending} onPress={() => edit.mutate({ ...e, value: draft.trim() })} />
+            <Btn label="Cancel" theme={theme} onPress={() => setEditing(null)} />
           </View>
         </>
       ), () => setDraft(cur));
@@ -318,42 +318,42 @@ function SectionView({ section, theme, styles }: { section: Section; theme: Plug
             {profileNames.map((o) => chip(o, set.includes(o.value), () => setDraft((set.includes(o.value) ? set.filter((x) => x !== o.value) : [...set, o.value]).join(" "))))}
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap" as const }}>
-            <Btn label={set.length ? `只允许这 ${set.length} 个` : "任意 profile"} primary theme={theme} disabled={edit.isPending} onPress={() => edit.mutate({ ...e, value: set.join(" ") })} />
-            <Btn label="跟随上级" theme={theme} disabled={edit.isPending} onPress={() => edit.mutate({ ...e, value: "default" })} />
+            <Btn label={set.length ? `Allow these ${set.length}` : "Any profile"} primary theme={theme} disabled={edit.isPending} onPress={() => edit.mutate({ ...e, value: set.join(" ") })} />
+            <Btn label="Inherit" theme={theme} disabled={edit.isPending} onPress={() => edit.mutate({ ...e, value: "default" })} />
           </View>
         </>
       ), () => setDraft(cur.join(" ")));
     };
-    // Provider in two steps: the kind, then its model ("默认模型": the kind alone).
+    // Provider in two steps: the kind, then its model ("Default model": the kind alone).
     const providerPicker = (cur: string, onPick: (prov: string) => void) => {
       const kind = pick || kindOf(cur);
-      const models: Opt[] = [{ value: "", label: "默认模型" }, ...providerOf(kind).models.map((m: any) => ({ value: m.id, label: m.label }))];
+      const models: Opt[] = [{ value: "", label: "Default model" }, ...providerOf(kind).models.map((m: any) => ({ value: m.id, label: m.label }))];
       return (
         <>
           <Text style={styles.meta}>provider</Text>
           {chips(withCurrent(ch.providers.map((p: any) => ({ value: p.kind, label: p.kind })), kindOf(cur)), kind, setPick)}
-          <Text style={styles.meta}>模型</Text>
+          <Text style={styles.meta}>model</Text>
           {chips(kind === kindOf(cur) ? withCurrent(models, modelOf(cur)) : models, kind === kindOf(cur) ? modelOf(cur) : "\u0000", (m) => onPick(m ? `${kind}/${m}` : kind))}
         </>
       );
     };
-    const safetyText = (v: unknown) => (typeof v === "boolean" ? (v ? "开" : "关") : Array.isArray(v) ? v.join(" ") || "任意" : v == null ? "任意" : String(v));
+    const safetyText = (v: unknown) => (typeof v === "boolean" ? (v ? "on" : "off") : Array.isArray(v) ? v.join(" ") || "any" : v == null ? "any" : String(v));
     const SAFETY_OPTS: Record<string, Opt[]> = {
-      yolo: [{ value: "on", label: "开" }, { value: "off", label: "关" }, inherit],
-      routine_commands: [{ value: "on", label: "开" }, { value: "off", label: "关" }, inherit],
-      start_threads: [{ value: "propose", label: "先提议" }, { value: "auto", label: "直接开" }, inherit],
+      yolo: [{ value: "on", label: "on" }, { value: "off", label: "off" }, inherit],
+      routine_commands: [{ value: "on", label: "on" }, { value: "off", label: "off" }, inherit],
+      start_threads: [{ value: "propose", label: "propose first" }, { value: "auto", label: "start directly" }, inherit],
     };
     const safetyCur = (v: unknown) => (typeof v === "boolean" ? (v ? "on" : "off") : String(v ?? ""));
     const num = (ns: number[], zero = "") => ns.map((n) => ({ value: String(n), label: n === 0 && zero ? zero : String(n) }));
     const projectOpts = (k: string): Opt[] | null =>
       k.endsWith("_profile") ? profileNames
       : k === "max_parallel_threads" ? num([1, 2, 3, 4, 5, 6, 8, 10])
-      : k === "auto_resolve_days" ? num([0, 1, 2, 3, 5, 7, 14, 30], "不自动")
+      : k === "auto_resolve_days" ? num([0, 1, 2, 3, 5, 7, 14, 30], "never")
       : k === "nudge" || k === "mute" || k === "pr_checks" ? onOff : null;
     return (
       <View>
-        <Text style={styles.meta}>点一行展开，点选项就保存。项目设置直接生效；安全设置和 profile 只能由你改，保存时会弹出 macOS 对话框，点 Allow 才生效。</Text>
-        <Text style={[styles.groupTitle, { marginTop: 12 }]}>新项目的默认 profile</Text>
+        <Text style={styles.meta}>Tap a row to open it, tap a choice to save. Project settings apply at once; safety settings and profiles can only be changed by you — saving asks for a system dialog, and only Allow applies it.</Text>
+        <Text style={[styles.groupTitle, { marginTop: 12 }]}>Default profiles for new projects</Text>
         <View style={styles.card}>
           {(["thread", "coordinator"] as const).map((r) => {
             const cur = data.defaults[`${r}_profile`] ?? "";
@@ -364,20 +364,20 @@ function SectionView({ section, theme, styles }: { section: Section; theme: Plug
         {data.profiles.map((p: any) => {
           const e = (key: string) => ({ scope: "profile" as const, target: p.name, key });
           const model = providerOf(kindOf(p.provider)).models.find((m: any) => m.id === modelOf(p.provider));
-          const thinking: Opt[] = [{ value: "", label: "默认" }, ...(model?.thinking ?? []).map((t: any) => ({ value: t.id, label: t.label }))];
-          const modes: Opt[] = [{ value: "", label: "默认" }, ...providerOf(kindOf(p.provider)).modes.map((m: any) => ({ value: m.id, label: m.label }))];
+          const thinking: Opt[] = [{ value: "", label: "Default" }, ...(model?.thinking ?? []).map((t: any) => ({ value: t.id, label: t.label }))];
+          const modes: Opt[] = [{ value: "", label: "Default" }, ...providerOf(kindOf(p.provider)).modes.map((m: any) => ({ value: m.id, label: m.label }))];
           return (
             <View key={p.name} style={styles.card}>
-              <Text style={styles.title}>{p.name}{p.builtin ? "（内置）" : ""}</Text>
+              <Text style={styles.title}>{p.name}{p.builtin ? " (built in)" : ""}</Text>
               {p.builtin ? <Text style={styles.meta}>{p.summary}</Text> : (
                 <>
                   {row(`profile/${p.name}/provider`, "provider", p.provider, () => providerPicker(p.provider, (v) => edit.mutate({ ...e("provider"), value: v })), () => setPick(""))}
-                  {choose(e("thinking"), "thinking", p.thinking || "默认", p.thinking, thinking)}
-                  {choose(e("mode"), "mode", p.mode || "默认", p.mode, modes)}
-                  {choose(e("yolo_mode"), "yolo_mode", p.yolo_mode || "默认", p.yolo_mode, modes, "yolo 开启时用的 mode")}
+                  {choose(e("thinking"), "thinking", p.thinking || "Default", p.thinking, thinking)}
+                  {choose(e("mode"), "mode", p.mode || "Default", p.mode, modes)}
+                  {choose(e("yolo_mode"), "yolo_mode", p.yolo_mode || "Default", p.yolo_mode, modes, "the mode used while yolo is on")}
                   {text(e("description"), "description", p.description)}
                   <View style={{ flexDirection: "row", marginTop: 6 }}>
-                    <Btn label="删除" theme={theme} disabled={edit.isPending} onPress={() => edit.mutate({ ...e("remove"), value: "" })} />
+                    <Btn label="Delete" theme={theme} disabled={edit.isPending} onPress={() => edit.mutate({ ...e("remove"), value: "" })} />
                   </View>
                 </>
               )}
@@ -385,11 +385,11 @@ function SectionView({ section, theme, styles }: { section: Section; theme: Plug
           );
         })}
         <View style={styles.card}>
-          {row("profile/_new/add", "新建 profile", "", () => (
+          {row("profile/_new/add", "New profile", "", () => (
             <>
-              <TextInput style={input} value={draft} onChangeText={setDraft} placeholder="名字，例如 reviewer" autoFocus accessibilityLabel="新 profile 的名字" />
+              <TextInput style={input} value={draft} onChangeText={setDraft} placeholder="A name, e.g. reviewer" autoFocus accessibilityLabel="New profile name" />
               {providerPicker("", (prov) => edit.mutate({ scope: "profile", target: draft.trim(), key: "add", value: prov }))}
-              <Text style={styles.meta}>选好模型就会创建。</Text>
+              <Text style={styles.meta}>It is created once you pick a model.</Text>
             </>
           ), () => { setDraft(""); setPick(ch.providers[0]?.kind ?? ""); })}
         </View>
@@ -411,13 +411,13 @@ function SectionView({ section, theme, styles }: { section: Section; theme: Plug
                 {p.settings.repos.map((r: string, i: number) => (
                   <View key={r} style={{ flexDirection: "row", alignItems: "center" }}>
                     <Text style={[styles.mono, { flex: 1 }]}>{r}</Text>
-                    <Btn label="移除" theme={theme} disabled={edit.isPending} onPress={() => edit.mutate({ scope: "project", target: p.project, key: "repos.remove", value: repoPaths[i] })} />
+                    <Btn label="Remove" theme={theme} disabled={edit.isPending} onPress={() => edit.mutate({ scope: "project", target: p.project, key: "repos.remove", value: repoPaths[i] })} />
                   </View>
                 ))}
-                {row(`project/${p.project}/repos.add`, "添加 repo", "", () => (addable.length
+                {row(`project/${p.project}/repos.add`, "Add repo", "", () => (addable.length
                   ? chips(addable, "", (v) => edit.mutate({ scope: "project", target: p.project, key: "repos.add", value: v }))
-                  : <Text style={styles.meta}>Paseo 里的仓库都已加入。别的仓库先在 Paseo 里打开，或在终端用 pp set … repos.add。</Text>))}
-                <Text style={[styles.meta, { marginTop: 6, marginBottom: 4 }]}>安全设置（括号里是来源）</Text>
+                  : <Text style={styles.meta}>Every repository Paseo knows is already added. Open another one in Paseo first, or run pp set … repos.add in a terminal.</Text>))}
+                <Text style={[styles.meta, { marginTop: 6, marginBottom: 4 }]}>Safety settings (source in parentheses)</Text>
                 {Object.entries(p.safety).map(([k, s]: [string, any]) => {
                   const e = { scope: "safety" as const, target: p.project, key: k };
                   const shown = `${safetyText(s.value)} (${s.source})`;
@@ -433,13 +433,13 @@ function SectionView({ section, theme, styles }: { section: Section; theme: Plug
 
   return (
     <View>
-      <Text style={styles.meta}>只读。要改记忆，跟 coordinator 说。</Text>
+      <Text style={styles.meta}>Read-only. To change memory, talk to the coordinator.</Text>
       {data.map((m: any) => {
         const k = `${m.project}/${m.file}`;
         return (
           <Pressable key={k} style={[styles.card, { marginTop: 8 }]} onPress={() => toggle(k)}>
             <Text style={styles.title}>{m.project} · {m.file}</Text>
-            {shown === k ? <Text style={[styles.mono, { marginTop: 8 }]}>{m.text.slice(0, 20000) || "（空）"}</Text> : <Text style={styles.meta}>{m.text.length} 字符，点开查看</Text>}
+            {shown === k ? <Text style={[styles.mono, { marginTop: 8 }]}>{m.text.slice(0, 20000) || "(empty)"}</Text> : <Text style={styles.meta}>{m.text.length} characters, tap to view</Text>}
           </Pressable>
         );
       })}
