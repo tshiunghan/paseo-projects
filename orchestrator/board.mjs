@@ -31,8 +31,12 @@ export function boardData(root, section, kinds) {
   }
   if (section === "settings") {
     const config = loadConfig();
+    // A provider the tool does not know by name (a custom one, e.g. hermes) is built in too:
+    // named after its provider, like claude or pi. Without this, getProfile returns null and
+    // the whole settings tab fails on a daemon that reports a provider not in BUILTINS.
+    const profileOf = (n) => getProfile(config, n) ?? { name: n, provider: n, mode: "", thinking: "", yolo_mode: "", description: "" };
     return {
-      profiles: listedNames(config, kinds).map((n) => ({ ...getProfile(config, n), summary: profileSummary(getProfile(config, n)), builtin: !config.profiles[n] })),
+      profiles: listedNames(config, kinds).map((n) => ({ ...profileOf(n), summary: profileSummary(profileOf(n)), builtin: !config.profiles[n] })),
       defaults: config.defaults,
       hints: SET_KEYS,
       projects: projects.map((p) => {
