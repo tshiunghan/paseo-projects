@@ -18,8 +18,11 @@ export const secondsSince = (stamp, at = Date.now()) => {
 };
 
 const LOCAL_URL = "ws://127.0.0.1:6767/ws";
+// A daemon with a password (`paseo daemon set-password`) refuses a client that sends none.
+// The SDK does not read PASEO_PASSWORD on its own, so pp passes it on. Unset means "send no password".
+const password = () => process.env.PASEO_PASSWORD || undefined;
 export function makeClient(url) {
-  return createPaseoClient({ url: url || process.env.PASEO_URL || LOCAL_URL });
+  return createPaseoClient({ url: url || process.env.PASEO_URL || LOCAL_URL, password: password() });
 }
 
 // One connected client per daemon URL for the life of the process.
@@ -60,7 +63,7 @@ export async function closeClients() {
  */
 export async function importSession(url, { provider, sessionId, cwd, workspaceId, labels, model, modeId, title }) {
   if (provider === "claude" && !url) placeClaudeSession(sessionId, cwd);
-  const d = new DaemonClient({ url: url || process.env.PASEO_URL || LOCAL_URL, clientId: `pp-import-${process.pid}-${Date.now()}`, clientType: "cli" });
+  const d = new DaemonClient({ url: url || process.env.PASEO_URL || LOCAL_URL, clientId: `pp-import-${process.pid}-${Date.now()}`, clientType: "cli", password: password() });
   await d.connect();
   try {
     const agent = await d.importAgent({ provider, sessionId, cwd, workspaceId, labels });
